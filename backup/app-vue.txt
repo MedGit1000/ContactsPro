@@ -1,0 +1,1444 @@
+App.vue : 
+<template>
+  <div class="app-container">
+    <!-- Affichage du spinner de chargement global -->
+    <div v-if="isInitialLoading" class="loading-overlay">
+      <LoadingSpinner
+        type="bars"
+        color="#2563eb"
+        text="Chargement de l'application..."
+        size="large"
+      />
+    </div>
+
+    <div class="contact-manager-card">
+      <header class="app-header">
+        <h1 class="app-title">Contact Manager</h1>
+        <div class="search-container">
+          <div class="search-input-wrapper">
+            <svg
+              class="search-icon"
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <input
+              type="text"
+              class="search-input"
+              placeholder="Search"
+              v-model="searchTerm"
+              @input="filterContacts"
+            />
+          </div>
+        </div>
+        <button class="add-contact-btn" @click="openAddContactForm">
+          Add contact
+        </button>
+      </header>
+
+      <!-- Notification de succès -->
+      <div v-if="successMessage" class="success-notification">
+        <div class="success-icon">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+            <polyline points="22 4 12 14.01 9 11.01"></polyline>
+          </svg>
+        </div>
+        <span>{{ successMessage }}</span>
+        <button class="close-notification" @click="successMessage = ''">
+          ×
+        </button>
+      </div>
+
+      <!-- Message d'erreur -->
+      <div v-if="errorMessage" class="error-notification">
+        <div class="error-icon">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="8" x2="12" y2="12"></line>
+            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+          </svg>
+        </div>
+        <span>{{ errorMessage }}</span>
+        <button class="close-notification" @click="errorMessage = ''">×</button>
+      </div>
+
+      <div class="content-container">
+        <!-- Colonne de gauche - Liste des contacts -->
+        <div class="contacts-list-column">
+          <!-- Message si liste vide -->
+          <div
+            v-if="!isLoading && filteredContacts.length === 0 && !searchTerm"
+            class="empty-state"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="empty-icon"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+              <circle cx="9" cy="7" r="4"></circle>
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+              <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+            </svg>
+            <p>
+              Aucun contact disponible. Cliquez sur "Add contact" pour
+              commencer.
+            </p>
+          </div>
+
+          <!-- Message de recherche sans résultat -->
+          <div
+            v-else-if="
+              !isLoading && filteredContacts.length === 0 && searchTerm
+            "
+            class="empty-search"
+          >
+            <p>Aucun contact trouvé pour "{{ searchTerm }}"</p>
+            <button class="clear-search" @click="searchTerm = ''">
+              Effacer la recherche
+            </button>
+          </div>
+
+          <!-- État de chargement -->
+          <div v-else-if="isLoading" class="loading-state">
+            <LoadingSpinner
+              type="dots"
+              color="#6b7280"
+              text="Chargement des contacts..."
+            />
+          </div>
+
+          <!-- Résultat de recherche éventuel -->
+          <div v-else-if="searchTerm" class="search-result">
+            <div class="result-count">
+              {{ filteredContacts.length }} résultat(s) pour "{{ searchTerm }}"
+            </div>
+          </div>
+
+          <!-- Liste des contacts -->
+          <div
+            v-for="contact in filteredContacts"
+            :key="contact.id"
+            class="contact-list-item"
+            :class="{
+              active: selectedContact && selectedContact.id === contact.id,
+            }"
+            @click="selectContact(contact)"
+          >
+            <div class="avatar" :style="getAvatarStyle(contact)">
+              <span v-if="!contact.avatar">{{
+                getInitials(contact.name)
+              }}</span>
+              <img v-else :src="contact.avatar" :alt="contact.name" />
+            </div>
+            <div class="contact-list-details">
+              <span class="contact-name">{{ contact.name }}</span>
+              <span class="contact-email">{{ contact.email }}</span>
+              <span class="contact-phone">{{ contact.phone }}</span>
+            </div>
+            <div class="contact-actions">
+              <button
+                class="action-icon edit"
+                @click.stop="editContact(contact)"
+                title="Modifier ce contact"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path
+                    d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"
+                  ></path>
+                  <path
+                    d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"
+                  ></path>
+                </svg>
+              </button>
+              <button
+                class="action-icon delete"
+                @click.stop="confirmDeleteContact(contact)"
+                title="Supprimer ce contact"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <polyline points="3 6 5 6 21 6"></polyline>
+                  <path
+                    d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"
+                  ></path>
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Colonne centrale et de droite - Détails du contact -->
+        <div v-if="selectedContact" class="contact-details-wrapper">
+          <div class="contact-preview-column">
+            <div class="contact-avatar-container">
+              <div
+                class="large-avatar"
+                :style="getAvatarStyle(selectedContact, true)"
+              >
+                <span v-if="!selectedContact.avatar">{{
+                  getInitials(selectedContact.name)
+                }}</span>
+                <img
+                  v-else
+                  :src="selectedContact.avatar"
+                  :alt="selectedContact.name"
+                />
+              </div>
+              <h2 class="contact-preview-name">{{ selectedContact.name }}</h2>
+              <div class="contact-preview-info">
+                <p class="contact-label">Email</p>
+                <p class="contact-value">{{ selectedContact.email }}</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="contact-details-column">
+            <div class="details-header">
+              <div class="action-buttons">
+                <button
+                  class="action-btn edit-btn"
+                  @click="editContact(selectedContact)"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    class="btn-icon"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <path
+                      d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"
+                    ></path>
+                    <path
+                      d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"
+                    ></path>
+                  </svg>
+                  Edit
+                </button>
+                <button class="action-btn call-btn">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    class="btn-icon"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <path
+                      d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"
+                    ></path>
+                  </svg>
+                  Call
+                </button>
+                <button class="action-btn email-btn">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    class="btn-icon"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <path
+                      d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"
+                    ></path>
+                    <polyline points="22,6 12,13 2,6"></polyline>
+                  </svg>
+                  Email
+                </button>
+              </div>
+
+              <h2 class="details-name">{{ selectedContact.name }}</h2>
+              <p class="details-email">{{ selectedContact.email }}</p>
+
+              <div class="contact-info-section">
+                <h3 class="info-section-title">Phone</h3>
+                <p class="info-section-value">{{ selectedContact.phone }}</p>
+              </div>
+
+              <div class="contact-info-section" v-if="selectedContact.address">
+                <h3 class="info-section-title">Address</h3>
+                <p
+                  class="info-section-value"
+                  v-if="selectedContact.address.street"
+                >
+                  {{ selectedContact.address.street }}
+                </p>
+                <p
+                  class="info-section-value"
+                  v-if="
+                    selectedContact.address.city ||
+                    selectedContact.address.state ||
+                    selectedContact.address.zip
+                  "
+                >
+                  {{
+                    [
+                      selectedContact.address.city,
+                      selectedContact.address.state,
+                      selectedContact.address.zip,
+                    ]
+                      .filter(Boolean)
+                      .join(", ")
+                  }}
+                </p>
+              </div>
+
+              <div class="contact-info-section" v-if="selectedContact.category">
+                <h3 class="info-section-title">Category</h3>
+                <p class="info-section-value">
+                  <span
+                    class="category-badge"
+                    :style="{
+                      backgroundColor: getCategoryColor(
+                        selectedContact.category
+                      ),
+                    }"
+                  >
+                    {{ selectedContact.category }}
+                  </span>
+                </p>
+              </div>
+
+              <div class="contact-info-section" v-if="selectedContact.notes">
+                <h3 class="info-section-title">Notes</h3>
+                <p class="info-section-value notes">
+                  {{ selectedContact.notes }}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- État par défaut - Aucun contact sélectionné -->
+        <div v-else class="no-contact-selected">
+          <div class="default-state">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="default-icon"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+              <circle cx="9" cy="7" r="4"></circle>
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+              <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+            </svg>
+            <h2>Aucun contact sélectionné</h2>
+            <p>Sélectionnez un contact dans la liste ou créez-en un nouveau</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal pour l'ajout/modification d'un contact -->
+    <div
+      class="modal-overlay"
+      v-if="showContactForm"
+      @click.self="cancelFormAction"
+    >
+      <div class="modal-container">
+        <button class="modal-close-btn" @click="cancelFormAction">×</button>
+        <h2 class="modal-title">
+          {{ isEditMode ? "Modifier le contact" : "Ajouter un contact" }}
+        </h2>
+
+        <ContactForm
+          :editContact="isEditMode ? selectedContact : null"
+          :isSubmitting="isSubmitting"
+          @save-contact="saveContact"
+          @cancel-edit="cancelFormAction"
+        />
+      </div>
+    </div>
+
+    <!-- Modal de confirmation de suppression -->
+    <div
+      class="modal-overlay"
+      v-if="showDeleteConfirmation"
+      @click.self="showDeleteConfirmation = false"
+    >
+      <div class="confirm-modal">
+        <div class="confirm-icon">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <polyline points="3 6 5 6 21 6"></polyline>
+            <path
+              d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"
+            ></path>
+          </svg>
+        </div>
+        <h3 class="confirm-title">Confirmer la suppression</h3>
+        <p class="confirm-message">
+          Êtes-vous sûr de vouloir supprimer le contact
+          <strong>{{ contactToDelete ? contactToDelete.name : "" }}</strong> ?
+          <br />Cette action est irréversible.
+        </p>
+        <div class="confirm-actions">
+          <button class="btn-cancel" @click="showDeleteConfirmation = false">
+            Annuler
+          </button>
+          <button
+            class="btn-delete"
+            @click="deleteContact"
+            :disabled="isDeleting"
+          >
+            <span v-if="isDeleting" class="btn-spinner"></span>
+            <span v-else>Supprimer</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script>
+import { ref, computed, onMounted } from "vue";
+import ContactForm from "./components/ContactForm.vue";
+import LoadingSpinner from "./components/LoadingSpinner.vue";
+import contactService from "./services/api";
+
+export default {
+  name: "App",
+  components: {
+    ContactForm,
+    LoadingSpinner,
+  },
+  setup() {
+    // États de la liste de contacts
+    const contacts = ref([]);
+    const filteredContacts = ref([]);
+    const selectedContact = ref(null);
+    const searchTerm = ref("");
+
+    // États de chargement et d'erreur
+    const isInitialLoading = ref(true);
+    const isLoading = ref(false);
+    const isSubmitting = ref(false);
+    const isDeleting = ref(false);
+    const errorMessage = ref("");
+    const successMessage = ref("");
+
+    // États des modales
+    const showContactForm = ref(false);
+    const isEditMode = ref(false);
+    const showDeleteConfirmation = ref(false);
+    const contactToDelete = ref(null);
+
+    // Palette de couleurs pour les avatars et catégories
+    const categoryColors = {
+      family: "#4f46e5", // Indigo
+      friend: "#16a34a", // Vert
+      work: "#ea580c", // Orange
+      other: "#6b7280", // Gris
+    };
+
+    // Charger les contacts au démarrage
+    onMounted(async () => {
+      try {
+        isInitialLoading.value = true;
+        const response = await contactService.getAllContacts();
+        contacts.value = response.data;
+        filteredContacts.value = [...contacts.value];
+
+        // Sélectionner le premier contact par défaut s'il y en a
+        if (contacts.value.length > 0) {
+          selectedContact.value = contacts.value[0];
+        }
+      } catch (err) {
+        console.error("Erreur lors du chargement des contacts:", err);
+        errorMessage.value =
+          "Impossible de charger les contacts. Veuillez réessayer plus tard.";
+      } finally {
+        isInitialLoading.value = false;
+      }
+    });
+
+    // Filtrer les contacts en fonction du terme de recherche
+    const filterContacts = () => {
+      if (!searchTerm.value.trim()) {
+        filteredContacts.value = [...contacts.value];
+        return;
+      }
+
+      const term = searchTerm.value.toLowerCase();
+      filteredContacts.value = contacts.value.filter((contact) => {
+        return (
+          contact.name.toLowerCase().includes(term) ||
+          (contact.email && contact.email.toLowerCase().includes(term)) ||
+          (contact.phone && contact.phone.includes(term))
+        );
+      });
+    };
+
+    // Sélectionner un contact
+    const selectContact = (contact) => {
+      selectedContact.value = contact;
+    };
+
+    // Ouvrir le formulaire d'ajout
+    const openAddContactForm = () => {
+      isEditMode.value = false;
+      showContactForm.value = true;
+    };
+
+    // Éditer un contact
+    const editContact = (contact) => {
+      isEditMode.value = true;
+      selectedContact.value = contact;
+      showContactForm.value = true;
+    };
+
+    // Annuler l'action du formulaire
+    const cancelFormAction = () => {
+      showContactForm.value = false;
+      // Réinitialiser l'état d'édition après un délai pour l'animation
+      setTimeout(() => {
+        isEditMode.value = false;
+      }, 300);
+    };
+
+    // Sauvegarder un contact
+    const saveContact = async (contactData) => {
+      try {
+        isSubmitting.value = true;
+
+        if (contactData.id) {
+          // Mise à jour d'un contact existant
+          const response = await contactService.updateContact(
+            contactData.id,
+            contactData
+          );
+
+          // Mettre à jour le contact dans le tableau des contacts
+          const index = contacts.value.findIndex(
+            (c) => c.id === contactData.id
+          );
+          if (index !== -1) {
+            contacts.value[index] = response.data;
+            selectedContact.value = response.data;
+          }
+
+          successMessage.value = "Contact mis à jour avec succès !";
+        } else {
+          // Création d'un nouveau contact
+          const response = await contactService.createContact(contactData);
+          contacts.value.push(response.data);
+          selectedContact.value = response.data;
+
+          successMessage.value = "Contact ajouté avec succès !";
+        }
+
+        // Mettre à jour la liste filtrée
+        filterContacts();
+
+        // Fermer le formulaire
+        showContactForm.value = false;
+        isEditMode.value = false;
+
+        // Effacer le message après un délai
+        setTimeout(() => {
+          successMessage.value = "";
+        }, 5000);
+      } catch (err) {
+        console.error("Erreur lors de l'enregistrement du contact:", err);
+        errorMessage.value =
+          "Erreur lors de l'enregistrement du contact. Veuillez réessayer.";
+
+        // Effacer le message d'erreur après un délai
+        setTimeout(() => {
+          errorMessage.value = "";
+        }, 5000);
+      } finally {
+        isSubmitting.value = false;
+      }
+    };
+
+    // Confirmer la suppression d'un contact
+    const confirmDeleteContact = (contact) => {
+      contactToDelete.value = contact;
+      showDeleteConfirmation.value = true;
+    };
+
+    // Supprimer un contact
+    const deleteContact = async () => {
+      if (!contactToDelete.value) return;
+
+      try {
+        isDeleting.value = true;
+
+        await contactService.deleteContact(contactToDelete.value.id);
+
+        // Supprimer le contact de la liste
+        contacts.value = contacts.value.filter(
+          (c) => c.id !== contactToDelete.value.id
+        );
+
+        // Si le contact supprimé était sélectionné, désélectionner
+        if (
+          selectedContact.value &&
+          selectedContact.value.id === contactToDelete.value.id
+        ) {
+          selectedContact.value =
+            contacts.value.length > 0 ? contacts.value[0] : null;
+        }
+
+        // Mettre à jour la liste filtrée
+        filterContacts();
+
+        successMessage.value = "Contact supprimé avec succès !";
+
+        // Effacer le message après un délai
+        setTimeout(() => {
+          successMessage.value = "";
+        }, 5000);
+      } catch (err) {
+        console.error("Erreur lors de la suppression du contact:", err);
+        errorMessage.value =
+          "Erreur lors de la suppression du contact. Veuillez réessayer.";
+
+        // Effacer le message d'erreur après un délai
+        setTimeout(() => {
+          errorMessage.value = "";
+        }, 5000);
+      } finally {
+        isDeleting.value = false;
+        showDeleteConfirmation.value = false;
+        contactToDelete.value = null;
+      }
+    };
+
+    // Obtenir les initiales d'un nom
+    const getInitials = (name) => {
+      if (!name) return "";
+
+      return name
+        .split(" ")
+        .map((word) => word.charAt(0))
+        .join("")
+        .toUpperCase()
+        .substring(0, 2);
+    };
+
+    // Obtenir la couleur d'une catégorie
+    const getCategoryColor = (category) => {
+      return categoryColors[category] || categoryColors.other;
+    };
+
+    // Obtenir le style de l'avatar
+    const getAvatarStyle = (contact, isLarge = false) => {
+      if (contact.avatar) {
+        return {}; // Si un avatar existe, pas besoin de style spécifique
+      }
+
+      // Générer une couleur basée sur la catégorie ou l'ID si pas de catégorie
+      let backgroundColor = categoryColors.other;
+
+      if (contact.category && categoryColors[contact.category]) {
+        backgroundColor = categoryColors[contact.category];
+      } else {
+        // Couleur par défaut basée sur l'ID ou le nom
+        const seed = contact.id || contact.name;
+        const colorKeys = Object.keys(categoryColors);
+        const colorIndex = seed.toString().charCodeAt(0) % colorKeys.length;
+        backgroundColor = categoryColors[colorKeys[colorIndex]];
+      }
+
+      return {
+        backgroundColor,
+        color: "white",
+        fontSize: isLarge ? "2.5rem" : "1rem",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+      };
+    };
+
+    return {
+      // États des données
+      contacts,
+      filteredContacts,
+      selectedContact,
+      searchTerm,
+
+      // États de chargement et messages
+      isInitialLoading,
+      isLoading,
+      isSubmitting,
+      isDeleting,
+      errorMessage,
+      successMessage,
+
+      // États des modales
+      showContactForm,
+      isEditMode,
+      showDeleteConfirmation,
+      contactToDelete,
+
+      // Méthodes
+      filterContacts,
+      selectContact,
+      openAddContactForm,
+      editContact,
+      cancelFormAction,
+      saveContact,
+      confirmDeleteContact,
+      deleteContact,
+      getInitials,
+      getCategoryColor,
+      getAvatarStyle,
+    };
+  },
+};
+</script>
+
+<style scoped>
+.app-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  background-color: #f5f5f4;
+  padding: 1rem;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen,
+    Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+}
+
+.loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(255, 255, 255, 0.9);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 100;
+}
+
+.contact-manager-card {
+  width: 100%;
+  max-width: 1200px;
+  background: white;
+  border-radius: 1rem;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.app-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #111827;
+  margin: 0;
+}
+
+.search-container {
+  flex-grow: 1;
+  display: flex;
+  justify-content: center;
+  max-width: 400px;
+  margin: 0 2rem;
+}
+
+.search-input-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.search-icon {
+  position: absolute;
+  left: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 1.25rem;
+  height: 1.25rem;
+  color: #9ca3af;
+}
+
+.search-input {
+  width: 100%;
+  padding: 0.75rem 1rem 0.75rem 3rem;
+  background-color: #f3f4f6;
+  border: none;
+  border-radius: 9999px;
+  font-size: 0.875rem;
+  color: #111827;
+}
+
+.search-input:focus {
+  outline: none;
+  background-color: #e5e7eb;
+}
+
+.add-contact-btn {
+  background-color: #2563eb;
+  color: white;
+  border: none;
+  border-radius: 0.5rem;
+  padding: 0.75rem 1.25rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.add-contact-btn:hover {
+  background-color: #1d4ed8;
+}
+
+.success-notification,
+.error-notification {
+  display: flex;
+  align-items: center;
+  padding: 1rem 1.5rem;
+  margin: 1rem;
+  border-radius: 0.5rem;
+  position: relative;
+}
+
+.success-notification {
+  background-color: #ecfdf5;
+  border: 1px solid #a7f3d0;
+}
+
+.error-notification {
+  background-color: #fef2f2;
+  border: 1px solid #fecaca;
+}
+
+.success-icon,
+.error-icon {
+  margin-right: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.success-icon svg {
+  width: 1.25rem;
+  height: 1.25rem;
+  color: #10b981;
+}
+
+.error-icon svg {
+  width: 1.25rem;
+  height: 1.25rem;
+  color: #ef4444;
+}
+
+.close-notification {
+  position: absolute;
+  right: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  font-size: 1.25rem;
+  line-height: 1;
+  cursor: pointer;
+  color: #6b7280;
+}
+
+.content-container {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  min-height: 600px;
+}
+
+.contacts-list-column {
+  border-right: 1px solid #e5e7eb;
+  overflow-y: auto;
+  max-height: calc(100vh - 200px);
+}
+
+.empty-state,
+.empty-search,
+.loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1rem;
+  text-align: center;
+  color: #6b7280;
+}
+
+.empty-icon,
+.default-icon {
+  width: 3rem;
+  height: 3rem;
+  color: #9ca3af;
+  margin-bottom: 1rem;
+}
+
+.clear-search {
+  margin-top: 0.5rem;
+  background: none;
+  border: none;
+  color: #2563eb;
+  font-size: 0.875rem;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.search-result {
+  padding: 0.75rem 1rem;
+  background-color: #f9fafb;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.result-count {
+  font-size: 0.875rem;
+  color: #6b7280;
+}
+
+.contact-list-item {
+  display: flex;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  border-bottom: 1px solid #f3f4f6;
+  position: relative;
+}
+
+.contact-list-item:hover {
+  background-color: #f3f4f6;
+}
+
+.contact-list-item.active {
+  background-color: #eff6ff;
+  border-left: 3px solid #2563eb;
+}
+
+.contact-list-details {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.contact-actions {
+  display: none;
+  position: absolute;
+  right: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.contact-list-item:hover .contact-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.action-icon {
+  background: none;
+  border: none;
+  width: 2rem;
+  height: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.action-icon svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+.action-icon.edit {
+  color: #3b82f6;
+}
+
+.action-icon.edit:hover {
+  background-color: #eff6ff;
+}
+
+.action-icon.delete {
+  color: #ef4444;
+}
+
+.action-icon.delete:hover {
+  background-color: #fef2f2;
+}
+
+.avatar {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 9999px;
+  background-color: #d1d5db;
+  margin-right: 0.75rem;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.contact-name {
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: #111827;
+}
+
+.contact-email,
+.contact-phone {
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+
+.contact-details-wrapper {
+  display: grid;
+  grid-template-columns: 250px 1fr;
+}
+
+.contact-preview-column {
+  border-right: 1px solid #e5e7eb;
+  padding: 2rem 1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.contact-avatar-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.large-avatar {
+  width: 8rem;
+  height: 8rem;
+  border-radius: 9999px;
+  background-color: #d1d5db;
+  margin-bottom: 1.5rem;
+  overflow: hidden;
+}
+
+.contact-preview-name {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #111827;
+  margin: 0 0 1.5rem 0;
+  text-align: center;
+}
+
+.contact-preview-info {
+  width: 100%;
+  text-align: left;
+}
+
+.contact-label {
+  font-size: 0.75rem;
+  color: #6b7280;
+  margin-bottom: 0.25rem;
+}
+
+.contact-value {
+  font-size: 0.875rem;
+  color: #111827;
+  margin-top: 0;
+  word-break: break-word;
+}
+
+.contact-details-column {
+  padding: 2rem;
+}
+
+.details-header {
+  margin-bottom: 2rem;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.action-btn {
+  display: flex;
+  align-items: center;
+  padding: 0.5rem 1rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.375rem;
+  background-color: white;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-icon {
+  width: 1rem;
+  height: 1rem;
+  margin-right: 0.5rem;
+}
+
+.edit-btn {
+  color: #4b5563;
+}
+
+.edit-btn:hover {
+  background-color: #f3f4f6;
+  border-color: #d1d5db;
+}
+
+.call-btn {
+  color: #4b5563;
+}
+
+.call-btn:hover {
+  background-color: #f0fdf4;
+  border-color: #86efac;
+  color: #16a34a;
+}
+
+.email-btn {
+  color: #4b5563;
+}
+
+.email-btn:hover {
+  background-color: #eff6ff;
+  border-color: #93c5fd;
+  color: #2563eb;
+}
+
+.details-name {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #111827;
+  margin: 0 0 0.5rem 0;
+}
+
+.details-email {
+  font-size: 1rem;
+  color: #4b5563;
+  margin: 0 0 1.5rem 0;
+  word-break: break-word;
+}
+
+.contact-info-section {
+  margin-bottom: 1.5rem;
+}
+
+.info-section-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #111827;
+  margin: 0 0 0.5rem 0;
+}
+
+.info-section-value {
+  font-size: 0.9375rem;
+  color: #4b5563;
+  margin: 0.25rem 0;
+  word-break: break-word;
+}
+
+.info-section-value.notes {
+  white-space: pre-line;
+}
+
+.category-badge {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: white;
+  text-transform: capitalize;
+}
+
+.no-contact-selected {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  grid-column: span 2;
+  background-color: #f9fafb;
+}
+
+.default-state {
+  text-align: center;
+  padding: 3rem;
+}
+
+.default-state h2 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #111827;
+  margin: 0 0 0.5rem 0;
+}
+
+.default-state p {
+  color: #6b7280;
+  margin: 0;
+}
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+}
+
+.modal-container {
+  background-color: white;
+  border-radius: 0.75rem;
+  width: 90%;
+  max-width: 600px;
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: 1.5rem;
+  position: relative;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+}
+
+.modal-close-btn {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  font-size: 1.5rem;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: #6b7280;
+  line-height: 1;
+  width: 2rem;
+  height: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+}
+
+.modal-close-btn:hover {
+  background-color: #f3f4f6;
+}
+
+.modal-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #111827;
+  margin: 0 0 1.5rem 0;
+}
+
+.confirm-modal {
+  background-color: white;
+  border-radius: 0.75rem;
+  width: 90%;
+  max-width: 400px;
+  padding: 1.5rem;
+  text-align: center;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+}
+
+.confirm-icon {
+  width: 3rem;
+  height: 3rem;
+  background-color: #fef2f2;
+  border-radius: 9999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 1rem auto;
+}
+
+.confirm-icon svg {
+  width: 1.5rem;
+  height: 1.5rem;
+  color: #ef4444;
+}
+
+.confirm-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #111827;
+  margin: 0 0 0.75rem 0;
+}
+
+.confirm-message {
+  color: #6b7280;
+  margin: 0 0 1.5rem 0;
+  line-height: 1.5;
+}
+
+.confirm-actions {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+}
+
+.btn-cancel,
+.btn-delete {
+  padding: 0.625rem 1.25rem;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-cancel {
+  background-color: white;
+  border: 1px solid #d1d5db;
+  color: #4b5563;
+}
+
+.btn-cancel:hover {
+  background-color: #f3f4f6;
+  border-color: #9ca3af;
+}
+
+.btn-delete {
+  background-color: #ef4444;
+  border: 1px solid transparent;
+  color: white;
+  position: relative;
+}
+
+.btn-delete:hover:not(:disabled) {
+  background-color: #dc2626;
+}
+
+.btn-delete:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-spinner {
+  display: inline-block;
+  width: 1rem;
+  height: 1rem;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top-color: white;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .content-container {
+    grid-template-columns: 1fr;
+  }
+
+  .contacts-list-column {
+    border-right: none;
+    border-bottom: 1px solid #e5e7eb;
+    max-height: 300px;
+  }
+
+  .contact-details-wrapper {
+    grid-template-columns: 1fr;
+  }
+
+  .contact-preview-column {
+    display: none; /* Masquer la colonne du milieu sur mobile */
+  }
+
+  .app-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+
+  .search-container {
+    width: 100%;
+    max-width: none;
+    margin: 0;
+  }
+
+  .add-contact-btn {
+    align-self: stretch;
+    width: 100%;
+  }
+}
+</style>

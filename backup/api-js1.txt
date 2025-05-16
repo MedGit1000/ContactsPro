@@ -1,0 +1,183 @@
+import axios from 'axios';
+
+// Configuration de l'URL de base pour les requêtes API
+const api = axios.create({
+    baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3000',
+    headers: {
+        'Content-Type': 'application/json',
+    },
+    timeout: 10000, // Délai d'expiration de 10 secondes
+});
+
+// Intercepteur de requêtes
+api.interceptors.request.use(
+    (config) => {
+        // Vous pouvez ajouter des logs ici ou modifier les requêtes
+        console.log(`[API] Requête ${config.method.toUpperCase()} vers ${config.url}`);
+        return config;
+    },
+    (error) => {
+        console.error('[API] Erreur lors de la préparation de la requête:', error);
+        return Promise.reject(error);
+    }
+);
+
+// Intercepteur de réponses
+api.interceptors.response.use(
+    (response) => {
+        // Vous pouvez transformer ou vérifier les réponses ici
+        return response;
+    },
+    (error) => {
+        // Gestion globale des erreurs
+        if (error.response) {
+            // La requête a été faite et le serveur a répondu avec un code d'état hors de la plage 2xx
+            console.error(`[API] Erreur ${error.response.status}:`, error.response.data);
+
+            // Vous pouvez personnaliser les messages d'erreur en fonction du statut
+            switch (error.response.status) {
+                case 404:
+                    error.userMessage = "La ressource demandée n'a pas été trouvée.";
+                    break;
+                case 401:
+                    error.userMessage = "Authentification requise.";
+                    break;
+                case 403:
+                    error.userMessage = "Accès non autorisé.";
+                    break;
+                case 500:
+                    error.userMessage = "Erreur interne du serveur.";
+                    break;
+                default:
+                    error.userMessage = "Une erreur est survenue lors de la communication avec le serveur.";
+            }
+        } else if (error.request) {
+            // La requête a été faite mais pas de réponse
+            console.error('[API] Pas de réponse du serveur:', error.request);
+            error.userMessage = "Impossible de communiquer avec le serveur. Veuillez vérifier votre connexion.";
+        } else {
+            // Erreur lors de la configuration de la requête
+            console.error('[API] Erreur lors de la configuration de la requête:', error.message);
+            error.userMessage = "Erreur interne de l'application.";
+        }
+
+        // On peut ajouter une notification globale ici si nécessaire
+
+        return Promise.reject(error);
+    }
+);
+
+// Service pour les opérations CRUD des contacts
+export const contactService = {
+    /**
+     * Récupère tous les contacts
+     * @param {Object} params - Paramètres de requête optionnels (filtrage, pagination, etc.)
+     * @returns {Promise} - Promise contenant les contacts
+     */
+    getAllContacts(params = {}) {
+        return api.get('/contacts', { params });
+    },
+
+    /**
+     * Recherche des contacts par terme de recherche
+     * @param {string} term - Terme de recherche
+     * @returns {Promise} - Promise contenant les contacts correspondants
+     */
+    searchContacts(term) {
+        return api.get('/contacts', {
+            params: {
+                q: term
+            }
+        });
+    },
+
+    /**
+     * Récupère un contact par son ID
+     * @param {number} id - ID du contact
+     * @returns {Promise} - Promise contenant le contact
+     */
+    getContactById(id) {
+        return api.get(`/contacts/${id}`);
+    },
+
+    /**
+     * Crée un nouveau contact
+     * @param {Object} contactData - Données du contact
+     * @returns {Promise} - Promise contenant le contact créé
+     */
+    createContact(contactData) {
+        return api.post('/contacts', contactData);
+    },
+
+    /**
+     * Met à jour un contact existant
+     * @param {number} id - ID du contact
+     * @param {Object} contactData - Nouvelles données du contact
+     * @returns {Promise} - Promise contenant le contact mis à jour
+     */
+    updateContact(id, contactData) {
+        return api.put(`/contacts/${id}`, contactData);
+    },
+
+    /**
+     * Met à jour partiellement un contact existant
+     * @param {number} id - ID du contact
+     * @param {Object} contactData - Données partielles du contact
+     * @returns {Promise} - Promise contenant le contact mis à jour
+     */
+    patchContact(id, contactData) {
+        return api.patch(`/contacts/${id}`, contactData);
+    },
+
+    /**
+     * Supprime un contact
+     * @param {number} id - ID du contact à supprimer
+     * @returns {Promise}
+     */
+    deleteContact(id) {
+        return api.delete(`/contacts/${id}`);
+    },
+
+    /**
+     * Supprime plusieurs contacts
+     * @param {Array<number>} ids - Tableau d'IDs de contacts à supprimer
+     * @returns {Promise<Array>} - Tableau de résultats des suppressions
+     */
+    bulkDeleteContacts(ids) {
+        return Promise.all(ids.map(id => this.deleteContact(id)));
+    }
+};
+
+// Export des fonctions utilitaires en plus du service principal
+export const apiUtils = {
+    /**
+     * Vérification de la connexion au serveur
+     * @returns {Promise<boolean>} - true si le serveur est accessible
+     */
+    checkServerStatus() {
+        return api.get('/').then(
+            () => true,
+            () => false
+        );
+    },
+
+    /**
+     * Annule toutes les requêtes en cours avec un identifiant spécifique
+     * @param {string} cancelToken - Token d'annulation
+     */
+    cancelRequests(cancelToken) {
+        if (axios.isCancel(cancelToken)) {
+            cancelToken.cancel('Requête annulée par l\'utilisateur');
+        }
+    },
+
+    /**
+     * Crée un nouveau token d'annulation
+     * @returns {CancelTokenSource} - Source du token d'annulation
+     */
+    createCancelToken() {
+        return axios.CancelToken.source();
+    }
+};
+
+export default contactService;

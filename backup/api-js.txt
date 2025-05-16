@@ -1,0 +1,74 @@
+api.js : 
+import axios from 'axios';
+
+// Configuration de l'URL de base pour les requêtes API
+const api = axios.create({
+    baseURL: 'http://localhost:3000',
+    headers: {
+        'Content-Type': 'application/json',
+    },
+    timeout: 10000, // Délai d'expiration de 10 secondes
+});
+
+// Service pour les opérations CRUD des contacts
+export const contactService = {
+    /**
+     * Récupère tous les contacts
+     * @returns {Promise} - Promise contenant les contacts
+     */
+    getAllContacts() {
+        return api.get('/contacts');
+    },
+
+    /**
+     * Recherche des contacts par terme de recherche
+     * @param {string} term - Terme de recherche
+     * @returns {Promise} - Promise contenant les contacts correspondants
+     */
+    searchContacts(term) {
+        return api.get('/contacts', {
+            params: {
+                q: term
+            }
+        });
+    },
+
+    /**
+     * Récupère un contact par son ID
+     * @param {number} id - ID du contact
+     * @returns {Promise} - Promise contenant le contact
+     */
+    getContactById(id) {
+        return api.get(`/contacts/${id}`);
+    },
+
+    /**
+     * Crée un nouveau contact
+     * @param {Object} contactData - Données du contact
+     * @returns {Promise} - Promise contenant le contact créé
+     */
+    createContact(contactData) {
+        return api.post('/contacts', contactData);
+    },
+
+    /**
+     * Met à jour un contact existant
+     * @param {number} id - ID du contact
+     * @param {Object} contactData - Nouvelles données du contact
+     * @returns {Promise} - Promise contenant le contact mis à jour
+     */
+    updateContact(id, contactData) {
+        return api.put(`/contacts/${id}`, contactData);
+    },
+
+    /**
+     * Supprime un contact
+     * @param {number} id - ID du contact à supprimer
+     * @returns {Promise}
+     */
+    deleteContact(id) {
+        return api.delete(`/contacts/${id}`);
+    }
+};
+
+export default contactService;

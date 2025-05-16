@@ -1,0 +1,258 @@
+{
+  "contacts": [
+    {
+      "id": 1,
+      "name": "Mohammed El Amrani",
+      "email": "mohammed.elamrani@example.com",
+      "phone": "0661234567",
+      "category": "work",
+      "notes": "Responsable du département marketing",
+      "createdAt": "2023-01-15T10:30:00Z",
+      "updatedAt": "2023-05-20T14:15:00Z",
+      "address": {
+        "street": "12 Avenue Hassan II",
+        "city": "Casablanca",
+        "state": "Casablanca-Settat",
+        "zip": "20000"
+      }
+    },
+    {
+      "id": 2,
+      "name": "Fatima Benali",
+      "email": "fatima.benali@example.com",
+      "phone": "0672345678",
+      "category": "family",
+      "notes": "Cousine du côté maternel, vit à Marrakech",
+      "createdAt": "2023-02-10T09:45:00Z",
+      "updatedAt": "2023-02-10T09:45:00Z",
+      "address": {
+        "street": "45 Rue Bab Agnaou",
+        "city": "Marrakech",
+        "state": "Marrakech-Safi",
+        "zip": "40000"
+      }
+    },
+    {
+      "id": 3,
+      "name": "Younes Ouazzani",
+      "email": "younes.ouazzani@example.com",
+      "phone": "0683456789",
+      "category": "friend",
+      "notes": "Ami d'enfance, anniversaire le 12 avril",
+      "createdAt": "2023-03-05T16:20:00Z",
+      "updatedAt": "2023-06-12T11:05:00Z",
+      "address": {
+        "street": "78 Boulevard Mohammed V",
+        "city": "Rabat",
+        "state": "Rabat-Salé-Kénitra",
+        "zip": "10000"
+      }
+    },
+    {
+      "id": 4,
+      "name": "Amina Tazi",
+      "email": "amina.tazi@example.com",
+      "phone": "0694567890",
+      "category": "work",
+      "notes": "Chef de projet pour l'initiative de refonte",
+      "createdAt": "2023-03-22T08:10:00Z",
+      "updatedAt": "2023-03-22T08:10:00Z",
+      "address": {
+        "street": "101 Avenue des FAR",
+        "city": "Casablanca",
+        "state": "Casablanca-Settat",
+        "zip": "20250"
+      }
+    },
+    {
+      "id": 5,
+      "name": "Karim Benchekroun",
+      "email": "karim.benchekroun@example.com",
+      "phone": "0605678901",
+      "category": "friend",
+      "notes": "Camarade d'université, expert en design graphique",
+      "createdAt": "2023-04-18T13:40:00Z",
+      "updatedAt": "2023-04-18T13:40:00Z",
+      "address": {
+        "street": "22 Rue Moulay Rachid",
+        "city": "Fès",
+        "state": "Fès-Meknès",
+        "zip": "30000"
+      }
+    },
+    {
+      "id": 6,
+      "name": "Laila El Fassi",
+      "email": "laila.elfassi@example.com",
+      "phone": "0616789012",
+      "category": "family",
+      "notes": "Tante du côté paternel, professeur d'université",
+      "createdAt": "2023-05-05T19:25:00Z",
+      "updatedAt": "2023-05-05T19:25:00Z",
+      "address": {
+        "street": "33 Rue Ibn Battouta",
+        "city": "Tanger",
+        "state": "Tanger-Tétouan-Al Hoceïma",
+        "zip": "90000"
+      }
+    },
+    {
+      "id": 7,
+      "name": "Hassan Bennani",
+      "email": "hassan.bennani@example.com",
+      "phone": "0627890123",
+      "category": "work",
+      "notes": "Directeur RH, contact pour les questions de politique d'entreprise",
+      "createdAt": "2023-06-20T10:15:00Z",
+      "updatedAt": "2023-06-20T10:15:00Z",
+      "address": {
+        "street": "44 Boulevard Zerktouni",
+        "city": "Casablanca",
+        "state": "Casablanca-Settat",
+        "zip": "20100"
+      }
+    },
+    {
+      "id": 8,
+      "name": "Nadia El Mansouri",
+      "email": "nadia.elmansouri@example.com",
+      "phone": "0638901234",
+      "category": "friend",
+      "notes": "Partenaire de sport, coach personnelle",
+      "createdAt": "2023-07-10T17:50:00Z",
+      "updatedAt": "2023-07-10T17:50:00Z",
+      "address": {
+        "street": "55 Avenue Mohammed VI",
+        "city": "Agadir",
+        "state": "Souss-Massa",
+        "zip": "80000"
+      }
+    },
+    {
+      "id": 9,
+      "name": "Omar Alaoui",
+      "email": "omar.alaoui@example.com",
+      "phone": "0649012345",
+      "category": "work",
+      "notes": "Client potentiel, intéressé par le développement web",
+      "createdAt": "2023-08-15T14:30:00Z",
+      "updatedAt": "2023-08-15T14:30:00Z",
+      "address": {
+        "street": "66 Rue Prince Moulay Abdellah",
+        "city": "Meknès",
+        "state": "Fès-Meknès",
+        "zip": "50000"
+      }
+    },
+    {
+      "id": 10,
+      "name": "Salma Berrada",
+      "email": "salma.berrada@example.com",
+      "phone": "0650123456",
+      "category": "friend",
+      "notes": "Compagne de voyage, planifie un voyage au Japon l'année prochaine",
+      "createdAt": "2023-09-05T11:20:00Z",
+      "updatedAt": "2023-09-05T11:20:00Z",
+      "address": {
+        "street": "77 Boulevard Anfa",
+        "city": "Casablanca",
+        "state": "Casablanca-Settat",
+        "zip": "20370"
+      }
+    },
+    {
+      "id": 11,
+      "name": "Jamal Chaoui",
+      "email": "jamal.chaoui@example.com",
+      "phone": "0661234589",
+      "category": "other",
+      "notes": "Coordinateur bénévole de la communauté locale",
+      "createdAt": "2023-10-10T08:45:00Z",
+      "updatedAt": "2023-10-10T08:45:00Z",
+      "address": {
+        "street": "88 Avenue Allal Ben Abdellah",
+        "city": "Rabat",
+        "state": "Rabat-Salé-Kénitra",
+        "zip": "10100"
+      }
+    },
+    {
+      "id": 12,
+      "name": "Mehdi Benmoussa",
+      "email": "mehdi.benmoussa@example.com",
+      "phone": "0672345690",
+      "category": "professional",
+      "notes": "Développeur informatique, travaille sur le projet CRM"
+    },
+    {
+      "id": 13,
+      "name": "Assia Zidane",
+      "email": "assia.zidane@example.com",
+      "phone": "0683456701",
+      "category": "personal",
+      "notes": "Amie de l'université, réside à Témara"
+    },
+    {
+      "id": 14,
+      "name": "Rachid El Morabit",
+      "email": "rachid.elmorabit@example.com",
+      "phone": "0694567812",
+      "category": "work",
+      "notes": "Fournisseur de services informatiques"
+    },
+    {
+      "id": 15,
+      "name": "Samira Benkirane",
+      "email": "samira.benkirane@example.com",
+      "phone": "0605678923",
+      "category": "family",
+      "notes": "Belle-sœur, médecin à l'hôpital Hassan II"
+    }
+  ],
+  "categories": [
+    {
+      "id": 1,
+      "name": "family",
+      "color": "#4f46e5",
+      "label": "Famille"
+    },
+    {
+      "id": 2,
+      "name": "friend",
+      "color": "#16a34a",
+      "label": "Ami"
+    },
+    {
+      "id": 3,
+      "name": "work",
+      "color": "#ea580c",
+      "label": "Travail"
+    },
+    {
+      "id": 4,
+      "name": "other",
+      "color": "#6b7280",
+      "label": "Autre"
+    },
+    {
+      "id": 5,
+      "name": "professional",
+      "color": "#8b5cf6",
+      "label": "Professionnel"
+    },
+    {
+      "id": 6,
+      "name": "personal",
+      "color": "#ec4899",
+      "label": "Personnel"
+    }
+  ],
+  "settings": {
+    "appName": "Gestionnaire de Contacts",
+    "version": "1.0.0",
+    "lastBackup": "2023-12-01T12:00:00Z",
+    "theme": "light",
+    "defaultCategory": "other",
+    "contactsPerPage": 10
+  }
+}

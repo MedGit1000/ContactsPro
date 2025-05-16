@@ -1,0 +1,598 @@
+contactform : 
+<template>
+  <form @submit.prevent="submitForm" class="contact-form">
+    <!-- Message de validation -->
+    <div
+      v-if="validationMessage"
+      :class="['validation-message', validationMessageType]"
+    >
+      <span>{{ validationMessage }}</span>
+    </div>
+
+    <!-- Sections principales du formulaire -->
+    <div class="form-sections">
+      <!-- Section des informations personnelles -->
+      <div class="form-section">
+        <h3 class="section-title">Informations principales</h3>
+
+        <!-- Champ Nom -->
+        <div class="form-group">
+          <label for="name" class="form-label"
+            >Nom <span class="required">*</span></label
+          >
+          <input
+            type="text"
+            id="name"
+            v-model="formData.name"
+            class="form-input"
+            :class="{ 'input-error': errors.name }"
+            placeholder="Nom complet"
+            required
+            v-focus
+          />
+          <p v-if="errors.name" class="error-message">{{ errors.name }}</p>
+        </div>
+      </div>
+
+      <!-- Section des coordonnées -->
+      <div class="form-section">
+        <h3 class="section-title">Coordonnées</h3>
+
+        <!-- Champ Email -->
+        <div class="form-group">
+          <label for="email" class="form-label"
+            >Email <span class="required">*</span></label
+          >
+          <div class="input-with-icon">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="input-icon"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path
+                d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"
+              ></path>
+              <polyline points="22,6 12,13 2,6"></polyline>
+            </svg>
+            <input
+              type="email"
+              id="email"
+              v-model="formData.email"
+              class="form-input with-icon"
+              :class="{ 'input-error': errors.email }"
+              placeholder="exemple@email.com"
+              required
+            />
+          </div>
+          <p v-if="errors.email" class="error-message">{{ errors.email }}</p>
+        </div>
+
+        <!-- Champ Téléphone -->
+        <div class="form-group">
+          <label for="phone" class="form-label"
+            >Téléphone <span class="required">*</span></label
+          >
+          <div class="input-with-icon">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="input-icon"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path
+                d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"
+              ></path>
+            </svg>
+            <input
+              type="tel"
+              id="phone"
+              v-model="formData.phone"
+              class="form-input with-icon"
+              :class="{ 'input-error': errors.phone }"
+              placeholder="0123456789"
+              required
+            />
+          </div>
+          <p v-if="errors.phone" class="error-message">{{ errors.phone }}</p>
+          <p class="input-help">Format: 10 chiffres sans espaces</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section Informations complémentaires (optionnelle) -->
+    <div class="form-section">
+      <h3 class="section-title">
+        Informations complémentaires
+        <span class="optional">(optionnel)</span>
+      </h3>
+
+      <!-- Catégorie -->
+      <div class="form-group">
+        <label for="category" class="form-label">Catégorie</label>
+        <select id="category" v-model="formData.category" class="form-select">
+          <option value="">Sélectionner une catégorie</option>
+          <option value="family">Famille</option>
+          <option value="friend">Ami(e)</option>
+          <option value="work">Travail</option>
+          <option value="other">Autre</option>
+        </select>
+      </div>
+
+      <!-- Notes -->
+      <div class="form-group">
+        <label for="notes" class="form-label">Notes</label>
+        <textarea
+          id="notes"
+          v-model="formData.notes"
+          class="form-textarea"
+          placeholder="Informations supplémentaires sur ce contact..."
+          rows="3"
+        ></textarea>
+      </div>
+    </div>
+
+    <!-- Boutons d'action -->
+    <div class="form-actions">
+      <div class="required-hint">
+        <span class="required">*</span> Champs obligatoires
+      </div>
+
+      <div class="action-buttons">
+        <button type="button" class="btn-cancel" @click="$emit('cancel-edit')">
+          Annuler
+        </button>
+
+        <button
+          type="submit"
+          class="btn-save"
+          :disabled="isSubmitting || !isFormValid"
+        >
+          <span v-if="isSubmitting" class="btn-spinner"></span>
+          <span v-else>{{ editContact ? "Mettre à jour" : "Ajouter" }}</span>
+        </button>
+      </div>
+    </div>
+  </form>
+</template>
+
+<script>
+import { ref, reactive, computed, watch } from "vue";
+
+export default {
+  name: "ContactForm",
+  props: {
+    editContact: {
+      type: Object,
+      default: null,
+    },
+    isSubmitting: {
+      type: Boolean,
+      default: false,
+    },
+  },
+  emits: ["save-contact", "cancel-edit"],
+  setup(props, { emit }) {
+    // État du formulaire
+    const formData = reactive({
+      name: "",
+      email: "",
+      phone: "",
+      category: "",
+      notes: "",
+    });
+
+    // État des erreurs
+    const errors = reactive({
+      name: "",
+      email: "",
+      phone: "",
+    });
+
+    // État des messages de validation
+    const validationMessage = ref("");
+    const validationMessageType = ref("");
+
+    // Calculer si le formulaire est valide
+    const isFormValid = computed(() => {
+      return (
+        formData.name.trim() !== "" &&
+        isValidEmail(formData.email) &&
+        isValidPhone(formData.phone)
+      );
+    });
+
+    // Remplir le formulaire si nous éditons un contact
+    watch(
+      () => props.editContact,
+      (newContact) => {
+        if (newContact) {
+          formData.name = newContact.name || "";
+          formData.email = newContact.email || "";
+          formData.phone = newContact.phone || "";
+          formData.category = newContact.category || "";
+          formData.notes = newContact.notes || "";
+        } else {
+          resetForm();
+        }
+      },
+      { immediate: true }
+    );
+
+    // Validation du formulaire
+    const validateForm = () => {
+      let isValid = true;
+
+      // Réinitialiser les erreurs
+      errors.name = "";
+      errors.email = "";
+      errors.phone = "";
+
+      // Valider le nom
+      if (!formData.name.trim()) {
+        errors.name = "Le nom est requis";
+        isValid = false;
+      }
+
+      // Valider l'email
+      if (!formData.email.trim()) {
+        errors.email = "L'email est requis";
+        isValid = false;
+      } else if (!isValidEmail(formData.email)) {
+        errors.email = "Veuillez saisir un email valide";
+        isValid = false;
+      }
+
+      // Valider le téléphone
+      if (!formData.phone.trim()) {
+        errors.phone = "Le numéro de téléphone est requis";
+        isValid = false;
+      } else if (!isValidPhone(formData.phone)) {
+        errors.phone =
+          "Veuillez saisir un numéro de téléphone valide (10 chiffres)";
+        isValid = false;
+      }
+
+      // Afficher un message si le formulaire n'est pas valide
+      if (!isValid) {
+        validationMessage.value =
+          "Veuillez corriger les erreurs dans le formulaire";
+        validationMessageType.value = "error";
+
+        // Effacer le message après un délai
+        setTimeout(() => {
+          validationMessage.value = "";
+        }, 3000);
+      }
+
+      return isValid;
+    };
+
+    // Valider un email
+    const isValidEmail = (email) => {
+      if (!email) return false;
+      const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      return re.test(email);
+    };
+
+    // Valider un numéro de téléphone
+    const isValidPhone = (phone) => {
+      if (!phone) return false;
+      // Format simple: 10 chiffres
+      const re = /^\d{10}$/;
+      return re.test(phone);
+    };
+
+    // Soumettre le formulaire
+    const submitForm = async () => {
+      if (!validateForm()) return;
+
+      try {
+        // Préparer les données
+        const contactData = {
+          name: formData.name,
+          email: formData.email,
+          phone: formData.phone,
+          category: formData.category,
+          notes: formData.notes,
+        };
+
+        // Si nous éditons un contact, ajouter l'ID
+        if (props.editContact) {
+          contactData.id = props.editContact.id;
+        }
+
+        // Émettre l'événement pour sauvegarder
+        emit("save-contact", contactData);
+      } catch (err) {
+        console.error("Erreur lors de la soumission du formulaire:", err);
+
+        // Afficher un message d'erreur
+        validationMessage.value =
+          "Une erreur est survenue lors de la soumission";
+        validationMessageType.value = "error";
+
+        // Effacer le message après un délai
+        setTimeout(() => {
+          validationMessage.value = "";
+        }, 3000);
+      }
+    };
+
+    // Réinitialiser le formulaire
+    const resetForm = () => {
+      formData.name = "";
+      formData.email = "";
+      formData.phone = "";
+      formData.category = "";
+      formData.notes = "";
+
+      // Réinitialiser les erreurs
+      errors.name = "";
+      errors.email = "";
+      errors.phone = "";
+    };
+
+    return {
+      formData,
+      errors,
+      validationMessage,
+      validationMessageType,
+      isFormValid,
+      submitForm,
+    };
+  },
+};
+</script>
+
+<style scoped>
+.contact-form {
+  width: 100%;
+}
+
+.validation-message {
+  margin-bottom: 1rem;
+  padding: 0.75rem;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+}
+
+.validation-message.error {
+  background-color: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #b91c1c;
+}
+
+.validation-message.success {
+  background-color: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  color: #15803d;
+}
+
+.form-sections {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.form-section {
+  margin-bottom: 1.5rem;
+}
+
+.section-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #374151;
+  margin-top: 0;
+  margin-bottom: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.optional {
+  font-weight: normal;
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+
+.form-group {
+  margin-bottom: 1.25rem;
+}
+
+.form-label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #374151;
+  margin-bottom: 0.5rem;
+}
+
+.required {
+  color: #ef4444;
+  margin-left: 0.25rem;
+}
+
+.form-input,
+.form-select,
+.form-textarea {
+  width: 100%;
+  padding: 0.625rem 0.75rem;
+  font-size: 0.875rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.375rem;
+  background-color: white;
+  color: #1f2937;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.input-with-icon {
+  position: relative;
+}
+
+.input-icon {
+  position: absolute;
+  left: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 1.25rem;
+  height: 1.25rem;
+  color: #9ca3af;
+}
+
+.form-input.with-icon {
+  padding-left: 2.5rem;
+}
+
+.form-input:focus,
+.form-select:focus,
+.form-textarea:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+}
+
+.input-error {
+  border-color: #ef4444;
+}
+
+.input-error:focus {
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2);
+}
+
+.error-message {
+  color: #ef4444;
+  font-size: 0.75rem;
+  margin-top: 0.5rem;
+  margin-bottom: 0;
+}
+
+.input-help {
+  font-size: 0.75rem;
+  color: #6b7280;
+  margin-top: 0.5rem;
+}
+
+.form-select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20' stroke='%236b7280'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z' /%3E%3C/svg%3E");
+  background-position: right 0.75rem center;
+  background-repeat: no-repeat;
+  background-size: 1rem;
+  padding-right: 2.5rem;
+}
+
+.form-textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 2rem;
+}
+
+.required-hint {
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.btn-cancel,
+.btn-save {
+  padding: 0.625rem 1.25rem;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 6rem;
+}
+
+.btn-cancel {
+  background-color: white;
+  border: 1px solid #d1d5db;
+  color: #4b5563;
+}
+
+.btn-cancel:hover {
+  background-color: #f3f4f6;
+  border-color: #9ca3af;
+}
+
+.btn-save {
+  background-color: #3b82f6;
+  border: 1px solid transparent;
+  color: white;
+  position: relative;
+}
+
+.btn-save:hover:not(:disabled) {
+  background-color: #2563eb;
+}
+
+.btn-save:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-spinner {
+  display: inline-block;
+  width: 1rem;
+  height: 1rem;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top-color: white;
+  animation: spin 1s linear infinite;
+  margin-right: 0.5rem;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Responsive design */
+@media (max-width: 640px) {
+  .form-sections {
+    grid-template-columns: 1fr;
+  }
+
+  .form-actions {
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .required-hint {
+    order: 2;
+  }
+
+  .action-buttons {
+    order: 1;
+    width: 100%;
+  }
+
+  .btn-cancel,
+  .btn-save {
+    flex: 1;
+  }
+}
+</style>

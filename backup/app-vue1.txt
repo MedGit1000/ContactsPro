@@ -1,0 +1,417 @@
+<template>
+  <div>
+    <!-- En-tête de l'application -->
+    <header>
+      <div class="container">
+        <h1>Gestionnaire de Contacts</h1>
+      </div>
+    </header>
+
+    <!-- Contenu principal -->
+    <main>
+      <div class="card">
+        <!-- Notification pour les messages de succès -->
+        <div v-if="successMessage" class="success-alert">
+          <strong>Succès !</strong>
+          <span> {{ successMessage }}</span>
+          <button @click="successMessage = ''" class="close-btn">
+            &times;
+          </button>
+        </div>
+
+        <!-- Gestionnaire d'états de chargement et d'erreur -->
+        <div v-if="loading" class="spinner-container">
+          <LoadingSpinner />
+        </div>
+        <div v-else-if="error" class="error-alert">
+          <strong>Erreur !</strong>
+          <span> {{ error }}</span>
+          <button @click="error = null" class="close-btn">&times;</button>
+        </div>
+        <div v-else>
+          <!-- Statistiques des contacts -->
+          <div class="stats-container mb-4">
+            <div class="stat-box">
+              <span class="stat-value">{{ contacts.length }}</span>
+              <span class="stat-label">Total des contacts</span>
+            </div>
+          </div>
+
+          <!-- Recherche de contacts -->
+          <div class="search-container mb-4">
+            <input
+              type="text"
+              v-model="searchTerm"
+              class="form-input"
+              placeholder="Rechercher un contact..."
+            />
+          </div>
+
+          <!-- Formulaire pour ajouter/modifier un contact -->
+          <ContactForm
+            :editContact="currentContact"
+            @save-contact="saveContact"
+            @cancel-edit="cancelEdit"
+          />
+
+          <!-- Séparateur -->
+          <div class="divider"></div>
+
+          <!-- Section liste des contacts -->
+          <div class="mt-4">
+            <div class="list-header">
+              <h2 class="text-lg font-bold">Liste des Contacts</h2>
+              <div class="sort-container">
+                <label for="sort-select">Trier par:</label>
+                <select id="sort-select" v-model="sortBy" class="form-select">
+                  <option value="name">Nom</option>
+                  <option value="email">Email</option>
+                  <option value="phone">Téléphone</option>
+                </select>
+                <button
+                  @click="sortOrder = sortOrder === 'asc' ? 'desc' : 'asc'"
+                  class="sort-btn"
+                >
+                  {{ sortOrder === "asc" ? "↑" : "↓" }}
+                </button>
+              </div>
+            </div>
+
+            <ContactList
+              :contacts="filteredAndSortedContacts"
+              @edit-contact="editContact"
+              @delete-contact="showDeleteConfirmation"
+            />
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Modal de confirmation de suppression -->
+    <DeleteConfirmation
+      v-if="showConfirmDelete"
+      :contact="contactToDelete"
+      @confirm="confirmDelete"
+      @cancel="cancelDelete"
+    />
+  </div>
+</template>
+
+<script>
+import { ref, onMounted, computed } from "vue";
+import contactService from "./services/api";
+import ContactForm from "./components/ContactForm.vue";
+import ContactList from "./components/ContactList.vue";
+import LoadingSpinner from "./components/LoadingSpinner.vue";
+import DeleteConfirmation from "./components/DeleteConfirmation.vue";
+
+export default {
+  name: "App",
+  components: {
+    ContactForm,
+    ContactList,
+    LoadingSpinner,
+    DeleteConfirmation,
+  },
+  setup() {
+    // État des contacts
+    const contacts = ref([]);
+    const loading = ref(true);
+    const error = ref(null);
+    const successMessage = ref("");
+
+    // État pour la recherche et le tri
+    const searchTerm = ref("");
+    const sortBy = ref("name");
+    const sortOrder = ref("asc");
+
+    // État pour l'édition d'un contact
+    const currentContact = ref(null);
+
+    // État pour la confirmation de suppression
+    const showConfirmDelete = ref(false);
+    const contactToDelete = ref(null);
+
+    // Filtrer et trier les contacts
+    const filteredAndSortedContacts = computed(() => {
+      // Filtrer les contacts par le terme de recherche
+      let result = contacts.value;
+      if (searchTerm.value) {
+        const term = searchTerm.value.toLowerCase();
+        result = result.filter(
+          (contact) =>
+            contact.name.toLowerCase().includes(term) ||
+            contact.email.toLowerCase().includes(term) ||
+            contact.phone.includes(term)
+        );
+      }
+
+      // Trier les contacts
+      return result.sort((a, b) => {
+        let valA = a[sortBy.value].toLowerCase();
+        let valB = b[sortBy.value].toLowerCase();
+
+        if (sortOrder.value === "asc") {
+          return valA.localeCompare(valB);
+        } else {
+          return valB.localeCompare(valA);
+        }
+      });
+    });
+
+    // Charger les contacts au démarrage
+    onMounted(async () => {
+      try {
+        loading.value = true;
+        console.log("Tentative de chargement des contacts...");
+        const response = await contactService.getAllContacts();
+        console.log("Réponse du serveur:", response);
+        contacts.value = response.data;
+        console.log("Contacts chargés:", contacts.value);
+      } catch (err) {
+        console.error("Erreur détaillée lors du chargement des contacts:", err);
+        if (err.response) {
+          // La requête a été faite et le serveur a répondu avec un code d'état
+          console.error("Données d'erreur:", err.response.data);
+          console.error("Statut:", err.response.status);
+          error.value = `Erreur ${err.response.status}: ${
+            err.response.data?.message || "Impossible de charger les contacts."
+          }`;
+        } else if (err.request) {
+          // La requête a été faite mais pas de réponse
+          console.error("Pas de réponse du serveur:", err.request);
+          error.value =
+            "Impossible de joindre le serveur. Vérifiez que json-server est démarré.";
+        } else {
+          // Erreur lors de la configuration de la requête
+          console.error("Erreur lors de la configuration:", err.message);
+          error.value =
+            "Impossible de charger les contacts. Veuillez réessayer plus tard.";
+        }
+      } finally {
+        loading.value = false;
+      }
+    });
+
+    // Sauvegarder un contact (nouveau ou mis à jour)
+    const saveContact = async (contact) => {
+      try {
+        loading.value = true;
+        error.value = null;
+
+        // Si nous avons un ID, nous mettons à jour un contact existant
+        if (contact.id) {
+          const response = await contactService.updateContact(
+            contact.id,
+            contact
+          );
+
+          // Mettre à jour le contact dans le tableau des contacts
+          const index = contacts.value.findIndex((c) => c.id === contact.id);
+          if (index !== -1) {
+            contacts.value[index] = response.data;
+            successMessage.value = `Le contact ${contact.name} a été mis à jour avec succès.`;
+          }
+        } else {
+          // Sinon, nous créons un nouveau contact
+          const response = await contactService.createContact(contact);
+          contacts.value.push(response.data);
+          successMessage.value = `Le contact ${contact.name} a été créé avec succès.`;
+        }
+
+        // Réinitialiser l'état d'édition
+        currentContact.value = null;
+
+        // Effacer le message de succès après un délai
+        setTimeout(() => {
+          successMessage.value = "";
+        }, 5000);
+      } catch (err) {
+        console.error("Erreur lors de l'enregistrement du contact:", err);
+        error.value =
+          "Erreur lors de l'enregistrement du contact. Veuillez réessayer.";
+      } finally {
+        loading.value = false;
+      }
+    };
+
+    // Éditer un contact
+    const editContact = (contact) => {
+      currentContact.value = { ...contact };
+    };
+
+    // Annuler l'édition
+    const cancelEdit = () => {
+      currentContact.value = null;
+    };
+
+    // Afficher la confirmation de suppression
+    const showDeleteConfirmation = (contact) => {
+      contactToDelete.value = contact;
+      showConfirmDelete.value = true;
+    };
+
+    // Confirmer la suppression
+    const confirmDelete = async () => {
+      try {
+        loading.value = true;
+        error.value = null;
+
+        await contactService.deleteContact(contactToDelete.value.id);
+
+        // Sauvegarder le nom du contact avant de le supprimer pour le message de succès
+        const contactName = contactToDelete.value.name;
+
+        // Filtrer le contact supprimé de la liste
+        contacts.value = contacts.value.filter(
+          (c) => c.id !== contactToDelete.value.id
+        );
+
+        // Fermer le modal
+        cancelDelete();
+
+        // Afficher le message de succès
+        successMessage.value = `Le contact ${contactName} a été supprimé avec succès.`;
+
+        // Effacer le message de succès après un délai
+        setTimeout(() => {
+          successMessage.value = "";
+        }, 5000);
+      } catch (err) {
+        console.error("Erreur lors de la suppression du contact:", err);
+        error.value =
+          "Erreur lors de la suppression du contact. Veuillez réessayer.";
+      } finally {
+        loading.value = false;
+      }
+    };
+
+    // Annuler la suppression
+    const cancelDelete = () => {
+      showConfirmDelete.value = false;
+      contactToDelete.value = null;
+    };
+
+    return {
+      contacts,
+      loading,
+      error,
+      successMessage,
+      currentContact,
+      showConfirmDelete,
+      contactToDelete,
+      searchTerm,
+      sortBy,
+      sortOrder,
+      filteredAndSortedContacts,
+      saveContact,
+      editContact,
+      cancelEdit,
+      showDeleteConfirmation,
+      confirmDelete,
+      cancelDelete,
+    };
+  },
+};
+</script>
+
+<style scoped>
+.stats-container {
+  display: flex;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+.stat-box {
+  background-color: #f0f9ff;
+  border: 1px solid #bae6fd;
+  border-radius: 8px;
+  padding: 12px;
+  min-width: 120px;
+  text-align: center;
+}
+
+.stat-value {
+  display: block;
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: #0369a1;
+}
+
+.stat-label {
+  font-size: 0.875rem;
+  color: #64748b;
+}
+
+.search-container {
+  margin-bottom: 20px;
+}
+
+.list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.sort-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.form-select {
+  padding: 6px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background-color: white;
+}
+
+.sort-btn {
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: white;
+  cursor: pointer;
+}
+
+.success-alert {
+  background-color: #f0fff4;
+  border: 1px solid #c6f6d5;
+  color: #2f855a;
+  padding: 10px;
+  border-radius: 4px;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  position: relative;
+}
+
+.close-btn {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  font-size: 1.25rem;
+  cursor: pointer;
+  color: inherit;
+}
+
+.error-alert {
+  background-color: #fff5f5;
+  border: 1px solid #fed7d7;
+  color: #c53030;
+  padding: 10px;
+  border-radius: 4px;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  position: relative;
+}
+</style>
